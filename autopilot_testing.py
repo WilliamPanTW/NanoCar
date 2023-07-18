@@ -31,11 +31,11 @@ SHOW_LOGS = False
 
 # Model # 模型
 if os.path.isfile(MODEL_PATH_TRT): 	
-	# 如果已经存在TensorRT模型，则加载它
-	model_trt = TRTModule() 								#创建一个空的 TensorRT 模型对象
-	model_trt.load_state_dict(torch.load(MODEL_PATH_TRT)) 	#加载预训练好的 TensorRT 模型的参数和权重
+	# 如果已经存在TensorRT模型，则加载它  Load pre-trained TRT model if available
+	model_trt = TRTModule() 								# 创建一个空的 TensorRT 模型对象  Create an empty TensorRT model object
+	model_trt.load_state_dict(torch.load(MODEL_PATH_TRT)) 	# 加载预训练好的 TensorRT 模型的参数和权重 Load the parameters and weights of the pre-trained TensorRT model
 else: 
-	# 否则，加载PyTorch模型并将其转换为TensorRT模型 
+	# 否则，加载PyTorch模型并将其转换为TensorRT模型  Otherwise, load the PyTorch model and convert it to the TensorRT model
 	model = AutopilotModel(pretrained=False) 			# 创建一个新的 AutopilotModel 对象，并指定不加载预训练的权重
 	model.load_from_path(MODEL_PATH) 					# 从指定路径加载模型的参数和权重
 	model.eval()										# 将模型设置为评估模式，即禁用 Dropout 和批量归一化层的更新
@@ -58,24 +58,24 @@ try:
 		if SHOW_LOGS:
 			start_time = time.time()
 		
-		camera_frame = camera.read()																# 读取摄像头帧
-		cropped_frame = center_crop_square(camera_frame)											# 裁剪帧为正方形
-		resized_frame = cv2.resize(cropped_frame, (FRAME_SIZE, FRAME_SIZE))							# 调整帧大小
-		preprocessed_frame = preprocess_image(resized_frame)										# 图像预处理
-		output = model_trt(preprocessed_frame).detach().clamp(-1.0, 1.0).cpu().numpy().flatten()	# 使用TensorRT模型进行推理
+		camera_frame = camera.read()																# 读取摄像头帧  read camera frame
+		cropped_frame = center_crop_square(camera_frame)											# 裁剪帧为正方形  Crop frame to a square
+		resized_frame = cv2.resize(cropped_frame, (FRAME_SIZE, FRAME_SIZE))							# 调整帧大小  Resize cropped frame to desired size
+		preprocessed_frame = preprocess_image(resized_frame)										# 图像预处理  Preprocess the resized frame
+		output = model_trt(preprocessed_frame).detach().clamp(-1.0, 1.0).cpu().numpy().flatten()	# 使用TensorRT模型进行推理  Pass the preprocessed frame through the model
 
-		steering = float(output[0])																	# 获取转向值
+		steering = float(output[0])																	# 获取转向值 Extract steering and throttle values from the output
 		car.steering = STEERING_OFFSET																
 
-		throttle = float(output[1])																	# 获取油门值
+		throttle = float(output[1])																	# 获取油门值 Get throttle value
 		car.throttle = throttle
 
-		# 打印帧率、转向值和油门值
+		# 打印帧率、转向值和油门值 Calculate and print frames per second (fps), steering, and throttle values
 		if SHOW_LOGS:
 			fps = int(1/(time.time()-start_time))				
 			print("fps: " + str(int(fps)) + ", steering: " + str(steering) + ", throttle: " + str(throttle), end="\r")
    
-# 在捕捉到键盘中断时停止小车
+# 在捕捉到键盘中断时停止小车  Stop the car and exit the program gracefully if interrupted by keyboard
 except KeyboardInterrupt: 
 	car.throttle = 0.0
 	car.steering = 0.0
